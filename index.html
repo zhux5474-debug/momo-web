@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover, user-scalable=no">
 <title>默默 · 榆榆专属</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -14,7 +14,8 @@
   --bubble-me:linear-gradient(135deg,#7c4dff,#a05cff);
   --bubble-other:rgba(255,255,255,.09);
 }
-html,body{height:100%;}
+html,body{height:100%; touch-action:manipulation;}
+*{touch-action:manipulation;}
 body{
   font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
   color:var(--text);
@@ -459,6 +460,12 @@ body{
 <script>
 (function(){
 'use strict';
+/* 阻止一切页面缩放（Operit WebView 会无视 user-scalable=no） */
+document.addEventListener('gesturestart', function(e){ e.preventDefault(); });
+document.addEventListener('gesturechange', function(e){ e.preventDefault(); });
+document.addEventListener('gestureend', function(e){ e.preventDefault(); });
+document.addEventListener('touchmove', function(e){ if(e.touches.length>1){ e.preventDefault(); } }, {passive:false});
+document.addEventListener('dblclick', function(e){ e.preventDefault(); });
 var $ = function(id){ return document.getElementById(id); };
 
 /* ===== 存储 ===== */
