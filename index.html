@@ -14,8 +14,8 @@
   --bubble-me:linear-gradient(135deg,#7c4dff,#a05cff);
   --bubble-other:rgba(255,255,255,.09);
 }
-html,body{height:100%; touch-action:manipulation;}
-*{touch-action:manipulation;}
+html,body{height:100%; touch-action:pan-y;}
+*{touch-action:pan-y;}
 body{
   font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
   color:var(--text);
@@ -337,6 +337,7 @@ body{
   border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.35);
 }
 #gmBoard{width:100%; height:100%; display:block; border-radius:14px; touch-action:none; cursor:pointer;}
+#unlockBar,#unlockKnob{touch-action:none;}
 #gmChatBox{
   width:100%; flex:1; min-height:70px; margin-top:10px;
   background:rgba(255,255,255,.06); border:1px solid var(--card-border);
@@ -623,8 +624,8 @@ function openApp(id){
   var body = $('appBody');
   body.innerHTML = '';
   body.scrollTop = 0;
-  if (appRenderers[id]) appRenderers[id](body);
   appScreen.classList.add('show');
+  if (appRenderers[id]) appRenderers[id](body);
 }
 $('appBack').onclick = function(){
   appScreen.classList.remove('show');
