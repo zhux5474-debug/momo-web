@@ -924,16 +924,24 @@ appRenderers.gomoku = function(body){
       gmSay(GM_TALK[Math.floor(Math.random()*GM_TALK.length)]);
     }
   }
-  cv.addEventListener('click', function(e){
+  var lastTap = 0;
+  function onTap(e){
+    var now = Date.now();
+    if(now - lastTap < 300) return;
+    lastTap = now;
     if(over || turn!=='human') return;
     var rect=cv.getBoundingClientRect();
     var w=cv.width, m=w/16, cell=(w-2*m)/14;
-    var c=Math.round((e.clientX-rect.left-m)/cell), r=Math.round((e.clientY-rect.top-m)/cell);
+    var cx = (e.clientX!==undefined) ? e.clientX : (e.touches ? e.touches[0].clientX : 0);
+    var cy = (e.clientY!==undefined) ? e.clientY : (e.touches ? e.touches[0].clientY : 0);
+    var c=Math.round((cx-rect.left-m)/cell), r=Math.round((cy-rect.top-m)/cell);
     if(r<0||r>=N||c<0||c>=N||board[r][c]) return;
     place(r,c,humanColor);
     turn='ai'; $('gmTurn').textContent='默默思考中…';
     setTimeout(aiMove, 350+Math.random()*500);
-  });
+  }
+  cv.addEventListener('pointerdown', onTap);
+  cv.addEventListener('click', onTap);
   $('gmUndo').onclick=function(){
     if(over || !stack.length) return;
     if(stack.length>=2){ stack.pop(); stack.pop(); } else stack.pop();
