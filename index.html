@@ -57,6 +57,7 @@
     color: #fff; font-size: 18px; cursor: pointer; flex-shrink: 0;
   }
   #sendBtn:disabled { opacity:.4; }
+  /* 设置弹窗 */
   .overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.6);
     display: none; align-items: center; justify-content: center; z-index: 99;
@@ -183,14 +184,14 @@ async function send() {
     messages.push({ role: 'assistant', content: reply });
     addMsg(reply, false);
   } catch (e) {
-    addMsg('连接出问题了：' + e.message + '
-检查一下Key和网络。', false);
+    addMsg('连接出问题了：' + e.message + '\n检查一下Key和网络。', false);
   } finally {
     typing.style.display = 'none';
     sendBtn.disabled = false;
   }
 }
 
+// 设置
 const overlay = document.getElementById('overlay');
 document.getElementById('settingsBtn').onclick = openSettings;
 function openSettings() {
