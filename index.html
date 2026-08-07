@@ -265,6 +265,53 @@ body{
 .wxMsg.me .wxBubble{background:#95ec69; color:#111; border-bottom-right-radius:5px;}
 .wxMsg.momo .wxBubble{background:#fff; color:#111; border-bottom-left-radius:5px;}
 .wxTime{text-align:center; font-size:11px; color:rgba(255,255,255,.45); margin:8px 0;}
+#wxBody{position:relative;}
+#wxMore{
+  width:30px; height:30px; border-radius:50%; border:none; background:rgba(255,255,255,.1);
+  color:#fff; font-size:18px; line-height:1; cursor:pointer; flex-shrink:0;
+}
+#wxFaceBtn{
+  width:34px; height:34px; border-radius:50%; border:none; background:rgba(255,255,255,.12);
+  color:#fff; font-size:17px; cursor:pointer; flex-shrink:0;
+}
+#wxEmojiPanel{
+  display:none; position:absolute; left:10px; right:10px; bottom:64px; z-index:50;
+  background:rgba(30,30,35,.97); border:1px solid rgba(255,255,255,.1); border-radius:14px;
+  padding:10px; flex-wrap:wrap; gap:8px; box-shadow:0 6px 20px rgba(0,0,0,.4);
+}
+#wxEmojiPanel .wxEmoji{
+  width:38px; height:38px; display:flex; align-items:center; justify-content:center;
+  font-size:22px; border-radius:10px; cursor:pointer;
+}
+#wxEmojiPanel .wxEmoji:active{background:rgba(255,255,255,.15);}
+#wxSetPanel{
+  display:none; position:absolute; inset:0; background:rgba(0,0,0,.5);
+  z-index:60; align-items:flex-end; justify-content:center;
+}
+#wxSetPanel .wxSetCard{
+  width:100%; max-height:78%; overflow-y:auto;
+  background:#26262b; border-radius:20px 20px 0 0; padding:16px;
+  box-shadow:0 -6px 24px rgba(0,0,0,.4);
+}
+.wxSetHead{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
+.wxSetHead b{font-size:16px; color:#fff;}
+.wxSetHead button{border:none; background:rgba(255,255,255,.1); color:#fff; width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:14px;}
+#wxEmojiList span{
+  display:inline-flex; align-items:center; gap:4px; background:rgba(255,255,255,.1);
+  border-radius:9px; padding:4px 8px; font-size:16px; color:#fff;
+}
+#wxEmojiList span i{font-style:normal; color:rgba(255,255,255,.5); cursor:pointer; font-size:12px;}
+.recalled .wxBubble{background:rgba(0,0,0,.25)!important; color:rgba(255,255,255,.4)!important; font-size:12px;}
+#msgMenu{
+  display:none; position:absolute; z-index:70; min-width:96px;
+  background:rgba(40,40,45,.97); border:1px solid rgba(255,255,255,.12); border-radius:12px;
+  padding:5px; box-shadow:0 8px 24px rgba(0,0,0,.45);
+}
+#msgMenu button{
+  display:block; width:100%; text-align:left; border:none; background:none; color:#fff;
+  font-size:14px; padding:9px 12px; border-radius:8px; cursor:pointer;
+}
+#msgMenu button:active{background:rgba(255,255,255,.12);}
 
 /* ================= 世界书 ================= */
 .wbItem{
@@ -473,7 +520,8 @@ var $ = function(id){ return document.getElementById(id); };
 var STORE = {
   apiKey:'momo_apiKey', avatar:'momo_avatar', theme:'momo_theme', wall:'momo_wall',
   mems:'momo_memories', chats:'momo_chats', wb:'momo_worldbook',
-  diary:'momo_diary', icons:'momo_icons', badges:'momo_badges', unlock:'momo_unlocked'
+  diary:'momo_diary', icons:'momo_icons', badges:'momo_badges', unlock:'momo_unlocked',
+  me:'momo_meAvatar', wxWall:'momo_wxWall', note:'momo_note', emoji:'momo_emoji'
 };
 function load(k,d){ try{ var v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } }
 function save(k,v){ try{ localStorage.setItem(k,v); }catch(e){ /* 满 */ } }
@@ -667,6 +715,11 @@ $('nClose').onclick = hideNotify;
 var CHAT = loadJ(STORE.chats, []);
 function saveChat(){ saveJ(STORE.chats, CHAT); }
 var momoAvatar = load(STORE.avatar, '');
+var meAvatar = load(STORE.me, '');
+var momoNote = load(STORE.note, '默默');
+var wxWall = load(STORE.wxWall, '');
+var WX_EMOJI = loadJ(STORE.emoji, ['😊','😘','🥰','😤','🤔','😂','👍','❤️','🌙','✨','🍬','💢']);
+function saveEmoji(){ saveJ(STORE.emoji, WX_EMOJI); }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtHM(t){ var d=new Date(t); return pad(d.getHours())+':'+pad(d.getMinutes()); }
 function fmtDay(t){ var d=new Date(t); return (d.getMonth()+1)+'月'+d.getDate()+'日'; }
@@ -766,9 +819,13 @@ appRenderers.wechat = function(body){
   body.id = 'wxBody';
   body.innerHTML =
     '<div id="wxHeader"><div class="ava" id="wxAva">🐻</div>' +
-    '<div><div class="nm">默默</div><div class="st" id="wxSt">在线</div></div></div>' +
+    '<div style="flex:1;min-width:0;"><div class="nm" id="wxNm">'+esc(momoNote)+'</div><div class="st" id="wxSt">在线</div></div>' +
+    '<button id="wxMore">⋯</button></div>' +
     '<div id="wxChat"></div>' +
-    '<div id="wxBar"><textarea id="wxInput" placeholder="给默默发消息…" rows="1"></textarea><button id="wxSend">➤</button></div>';
+    '<div id="wxBar"><button id="wxFaceBtn">😊</button><textarea id="wxInput" placeholder="给'+esc(momoNote)+'发消息…" rows="1"></textarea><button id="wxSend">➤</button></div>' +
+    '<div id="wxEmojiPanel"></div>' +
+    '<div id="wxSetPanel"></div>' +
+    '<div id="msgMenu"></div>';
   if(momoAvatar){ $('wxAva').style.backgroundImage='url('+momoAvatar+')'; $('wxAva').textContent=''; }
   renderChat();
   var input=$('wxInput'), send=$('wxSend');
@@ -789,17 +846,136 @@ appRenderers.wechat = function(body){
   send.onclick=sendMsg;
   input.addEventListener('keydown', function(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMsg(); } });
   input.addEventListener('input', function(){ this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,96)+'px'; });
+  /* 表情面板 */
+  var faceBtn=$('wxFaceBtn'), emojiPanel=$('wxEmojiPanel');
+  faceBtn.onclick=function(){
+    var sp=$('wxSetPanel'); if(sp) sp.style.display='none';
+    if(emojiPanel.style.display==='flex'){ emojiPanel.style.display='none'; return; }
+    emojiPanel.innerHTML = WX_EMOJI.map(function(e){ return '<span class="wxEmoji">'+esc(e)+'</span>'; }).join('');
+    emojiPanel.querySelectorAll('.wxEmoji').forEach(function(s){
+      s.onclick=function(){ input.value += s.textContent; input.focus(); };
+    });
+    emojiPanel.style.display='flex';
+  };
+  /* 聊天设置（⋯） */
+  var setPanel=$('wxSetPanel');
+  setPanel.onclick=function(e){ if(e.target===this) this.style.display='none'; };
+  $('wxMore').onclick=function(){
+    emojiPanel.style.display='none';
+    setPanel.innerHTML =
+      '<div class="wxSetCard">' +
+      '<div class="wxSetHead"><b>聊天设置</b><button id="wxSetClose">✕</button></div>' +
+      '<div class="field"><label>给默默的备注</label><div class="btn-row" style="align-items:center;"><input type="text" id="noteIn" value="'+esc(momoNote)+'" style="flex:1;"><button class="btn primary" id="noteSave">保存</button></div></div>' +
+      '<div class="field"><label>我的头像</label><div class="btn-row"><label class="btn" style="flex:1;text-align:center;">📷 上传<input type="file" id="meAvaFile" accept="image/*" style="display:none;"></label><button class="btn" id="meAvaReset" style="flex:1;">重置</button></div></div>' +
+      '<div class="field"><label>默默的头像</label><div class="btn-row"><label class="btn" style="flex:1;text-align:center;">📷 上传<input type="file" id="momoAvaFile" accept="image/*" style="display:none;"></label><button class="btn" id="momoAvaReset" style="flex:1;">重置</button></div></div>' +
+      '<div class="field"><label>聊天背景壁纸</label><div class="btn-row"><label class="btn" style="flex:1;text-align:center;">🖼 上传<input type="file" id="wxWallFile" accept="image/*" style="display:none;"></label><button class="btn" id="wxWallReset" style="flex:1;">恢复默认</button></div></div>' +
+      '<div class="field"><label>表情包（点 ✕ 删除）</label><div id="wxEmojiList"></div><div class="btn-row" style="margin-top:6px;align-items:center;"><input type="text" id="emojiAddIn" placeholder="输入文字或emoji添加" style="flex:1;"><button class="btn primary" id="emojiAdd">添加</button></div></div>' +
+      '</div>';
+    function renderEmojiList(){
+      var list=$('wxEmojiList');
+      list.innerHTML = WX_EMOJI.map(function(e,i){
+        return '<span>'+esc(e)+'<i data-rm="'+i+'">✕</i></span>';
+      }).join('');
+      list.querySelectorAll('[data-rm]').forEach(function(x){
+        x.onclick=function(){
+          WX_EMOJI.splice(parseInt(x.getAttribute('data-rm'),10),1);
+          saveEmoji(); renderEmojiList();
+        };
+      });
+    }
+    renderEmojiList();
+    $('wxSetClose').onclick=function(){ setPanel.style.display='none'; };
+    $('noteSave').onclick=function(){
+      momoNote = $('noteIn').value.trim() || '默默';
+      save(STORE.note, momoNote);
+      $('wxNm').textContent = momoNote;
+      $('wxInput').placeholder = '给'+momoNote+'发消息…';
+      setPanel.style.display='none';
+      renderChat();
+      showNotify('💬','微信','备注改好啦：'+momoNote, null);
+    };
+    $('meAvaFile').onchange=function(){ var f=this.files[0]; if(!f) return; readImg(f, function(d){ meAvatar=d; save(STORE.me,d); renderChat(); showNotify('😊','微信','你的头像换好啦', null); }); };
+    $('meAvaReset').onclick=function(){ meAvatar=''; save(STORE.me,''); renderChat(); };
+    $('momoAvaFile').onchange=function(){ var f=this.files[0]; if(!f) return; readImg(f, function(d){ momoAvatar=d; save(STORE.avatar,d); var a=$('wxAva'); a.style.backgroundImage='url('+d+')'; a.textContent=''; renderChat(); showNotify('🐻','微信','默默换头像啦', null); }); };
+    $('momoAvaReset').onclick=function(){ momoAvatar=''; save(STORE.avatar,''); var a=$('wxAva'); a.style.backgroundImage=''; a.textContent='🐻'; renderChat(); };
+    $('wxWallFile').onchange=function(){ var f=this.files[0]; if(!f) return; readImg(f, function(d){ wxWall=d; save(STORE.wxWall,d); applyWxWall(); showNotify('🖼','微信','聊天背景换好啦', null); }); };
+    $('wxWallReset').onclick=function(){ wxWall=''; save(STORE.wxWall,''); applyWxWall(); };
+    $('emojiAdd').onclick=function(){
+      var v=$('emojiAddIn').value.trim();
+      if(!v) return;
+      WX_EMOJI.push(v); saveEmoji(); $('emojiAddIn').value=''; renderEmojiList();
+    };
+    setPanel.style.display='flex';
+  };
+  function applyWxWall(){
+    var c=$('wxChat'); if(!c) return;
+    if(wxWall){ c.style.background='none'; c.style.backgroundImage='url('+wxWall+')'; c.style.backgroundSize='cover'; c.style.backgroundPosition='center'; }
+    else { c.style.backgroundImage=''; c.style.background='rgba(0,0,0,.12)'; }
+  }
+  applyWxWall();
+  /* 点击菜单外任意处关闭长按菜单 */
+  body.onclick = function(e){
+    if(e.target && e.target.closest && e.target.closest('#msgMenu')) return;
+    var mm=$('msgMenu'); if(mm) mm.style.display='none';
+  };
   setTimeout(function(){ input.focus(); }, 300);
 };
 function renderChat(){
   var c=$('wxChat'); if(!c) return;
   var h='', lastDay='';
-  CHAT.forEach(function(m){
+  CHAT.forEach(function(m, idx){
     var day=fmtDay(m.t);
     if(day!==lastDay){ h+='<div class="wxTime">'+day+' '+fmtHM(m.t)+'</div>'; lastDay=day; }
-    h+='<div class="wxMsg '+(m.who==='me'?'me':'momo')+'"><div class="ava">'+(m.who==='me'?'😊':'🐻')+'</div><div class="wxBubble">'+esc(m.text)+'</div></div>';
+    var me = m.who==='me';
+    var ava = me ? meAvatar : momoAvatar;
+    var avaHtml = ava ? '<div class="ava" style="background-image:url('+ava+');"></div>' : '<div class="ava">'+(me?'😊':'🐻')+'</div>';
+    if(m.recalled){
+      h+='<div class="wxMsg '+(me?'me':'momo')+' recalled">'+avaHtml+'<div class="wxBubble">'+(me?'你撤回了一条消息':'默默撤回了一条消息')+'</div></div>';
+    } else {
+      h+='<div class="wxMsg '+(me?'me':'momo')+'" data-i="'+idx+'">'+avaHtml+'<div class="wxBubble">'+esc(m.text)+'</div></div>';
+    }
   });
   c.innerHTML = h || '<div class="emptyHint">和默默说句话吧～</div>';
+  /* 长按消息：撤回 / 删除 */
+  var menu=$('msgMenu'), curMsg=null;
+  function hideMenu(){ menu.style.display='none'; }
+  function showMenu(x, y, m){
+    curMsg=m;
+    var me = m.who==='me';
+    menu.innerHTML = me
+      ? '<button data-act="recall">↩ 撤回</button><button data-act="del">🗑 删除</button>'
+      : '<button data-act="del">🗑 删除</button>';
+    menu.style.left=Math.max(4, Math.min(x, c.clientWidth-108))+'px';
+    menu.style.top=Math.max(4, Math.min(y, c.clientHeight-88))+'px';
+    menu.style.display='block';
+    menu.querySelectorAll('button').forEach(function(b){
+      b.onclick=function(){
+        hideMenu();
+        var i=CHAT.indexOf(curMsg); if(i<0) return;
+        if(b.getAttribute('data-act')==='recall'){
+          CHAT[i].recalled=true;
+        } else {
+          CHAT.splice(i,1);
+        }
+        saveChat(); renderChat();
+      };
+    });
+  }
+  c.querySelectorAll('.wxMsg[data-i]').forEach(function(el){
+    var m = CHAT[parseInt(el.getAttribute('data-i'),10)];
+    if(!m) return;
+    var timer=null;
+    el.addEventListener('touchstart', function(e){
+      var t=e.touches[0];
+      timer=setTimeout(function(){
+        if(navigator.vibrate) navigator.vibrate(15);
+        showMenu(t.clientX, t.clientY, m);
+      }, 500);
+    }, {passive:true});
+    el.addEventListener('touchmove', function(){ clearTimeout(timer); }, {passive:true});
+    el.addEventListener('touchend', function(){ clearTimeout(timer); }, {passive:true});
+    el.addEventListener('contextmenu', function(e){ e.preventDefault(); showMenu(e.clientX, e.clientY, m); });
+  });
   c.scrollTop=c.scrollHeight;
 }
 
