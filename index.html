@@ -919,6 +919,7 @@ appRenderers.wechat = function(body){
       '<div class="field"><label>默默的头像</label><div class="btn-row"><label class="btn" style="flex:1;text-align:center;">📷 上传<input type="file" id="momoAvaFile" accept="image/*" style="display:none;"></label><button class="btn" id="momoAvaReset" style="flex:1;">重置</button></div></div>' +
       '<div class="field"><label>聊天背景壁纸</label><div class="btn-row"><label class="btn" style="flex:1;text-align:center;">🖼 上传<input type="file" id="wxWallFile" accept="image/*" style="display:none;"></label><button class="btn" id="wxWallReset" style="flex:1;">恢复默认</button></div></div>' +
       '<div class="field"><label>表情包（点 ✕ 删除）</label><div id="wxEmojiList"></div><div class="btn-row" style="margin-top:6px;align-items:center;"><input type="text" id="emojiAddIn" placeholder="输入文字或emoji添加" style="flex:1;"><button class="btn primary" id="emojiAdd">添加</button></div></div>' +
+      '<div class="field"><button class="btn danger" id="wxClearAll" style="width:100%;">🗑 清空聊天记录</button></div>' +
       '</div>';
     function renderEmojiList(){
       var list=$('wxEmojiList');
@@ -953,6 +954,12 @@ appRenderers.wechat = function(body){
       var v=$('emojiAddIn').value.trim();
       if(!v) return;
       WX_EMOJI.push(v); saveEmoji(); $('emojiAddIn').value=''; renderEmojiList();
+    };
+    $('wxClearAll').onclick=function(){
+      if(!confirm('确定清空所有聊天记录吗？清空后无法恢复！')) return;
+      CHAT=[]; saveChat(); renderChat();
+      setPanel.style.display='none';
+      showNotify('🗑','微信','聊天记录已清空', null);
     };
     setPanel.style.display='flex';
   };
