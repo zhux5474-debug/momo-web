@@ -550,15 +550,17 @@ function applyTheme(t){
   var c = loadJ(STORE.themeCustom, null);
   if(c && typeof c==='object' && (c.accent||c.accent2)){
     var a = c.accent||t.accent, b = c.accent2||t.accent2;
-    r.setProperty('--bg1', shade(a,.82));
+    r.setProperty('--bg1', a);
     r.setProperty('--bg2', a);
-    r.setProperty('--bg3', shade(a,.50));
+    r.setProperty('--bg3', shade(a,.88));
     r.setProperty('--accent',a); r.setProperty('--accent2',b);
     r.setProperty('--bubble-me','linear-gradient(135deg,'+a+','+b+')');
+    var wi = $('wallImg'); if(wi) wi.style.opacity = '0.35';
   } else {
     r.setProperty('--bg1',t.bg1); r.setProperty('--bg2',t.bg2); r.setProperty('--bg3',t.bg3);
     r.setProperty('--accent',t.accent); r.setProperty('--accent2',t.accent2);
     r.setProperty('--bubble-me','linear-gradient(135deg,'+t.accent+','+t.accent2+')');
+    var wi = $('wallImg'); if(wi) wi.style.opacity = '1';
   }
 }
 function getTheme(){ var i=parseInt(load(STORE.theme,'0'),10); if(isNaN(i)||i<0||i>=THEMES.length) i=0; return THEMES[i]; }
