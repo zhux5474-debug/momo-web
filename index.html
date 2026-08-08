@@ -14,7 +14,7 @@
   --bubble-me:linear-gradient(135deg,#7c4dff,#a05cff);
   --bubble-other:rgba(255,255,255,.09);
 }
-html,body{height:100%; touch-action:pan-y;}
+html,body{height:100%; height:100dvh; touch-action:pan-y;}
 *{touch-action:pan-y;}
 body{
   font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
@@ -34,7 +34,7 @@ body{
 /* ================= 手机壳 ================= */
 #phone{
   position:relative; z-index:2;
-  width:min(390px, 100vw); height:min(844px, 100vh);
+  width:min(390px, 100vw); height:min(844px, 100dvh);
   background:#000;
   border-radius:44px;
   overflow:hidden;
@@ -43,7 +43,7 @@ body{
   user-select:none; -webkit-user-select:none;
 }
 @media (max-width:420px), (max-height:880px){
-  #phone{border-radius:0; box-shadow:none; width:100vw; height:100vh;}
+  #phone{border-radius:0; box-shadow:none; width:100vw; height:100dvh;}
 }
 /* 灵动岛 */
 #island{
@@ -524,9 +524,9 @@ var STORE = {
   me:'momo_meAvatar', wxWall:'momo_wxWall', note:'momo_note', emoji:'momo_emoji'
 };
 function load(k,d){ try{ var v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } }
-function save(k,v){ try{ localStorage.setItem(k,v); }catch(e){ /* 满 */ } }
+function save(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
 function loadJ(k,d){ try{ var v=JSON.parse(load(k,'null')); return v===null?d:v; }catch(e){ return d; } }
-function saveJ(k,v){ save(k,JSON.stringify(v)); }
+function saveJ(k,v){ return save(k,JSON.stringify(v)); }
 
 /* ===== 主题 ===== */
 var THEMES = [
@@ -629,10 +629,23 @@ function getIcons(){
   var def = {};
   APPS.forEach(function(a){ def[a.id] = {emoji:a.emoji, ia:a.ia, ib:a.ib, name:a.name, img:''}; });
   var saved = loadJ(STORE.icons, {});
-  Object.keys(saved).forEach(function(k){ if(def[k]) def[k] = Object.assign(def[k], saved[k]); });
+  if(saved && typeof saved==='object' && !Array.isArray(saved)){
+    Object.keys(saved).forEach(function(k){
+      if(!def[k]) return;
+      var v=saved[k];
+      if(!v || typeof v!=='object') return;
+      var o=Object.assign({}, def[k], v);
+      if(typeof o.name!=='string' || !o.name) o.name=def[k].name;
+      if(typeof o.emoji!=='string' || !o.emoji) o.emoji=def[k].emoji;
+      if(typeof o.ia!=='string' || !o.ia) o.ia=def[k].ia;
+      if(typeof o.ib!=='string' || !o.ib) o.ib=def[k].ib;
+      if(typeof o.img!=='string' || o.img.indexOf('data:image/')!==0) o.img='';
+      def[k]=o;
+    });
+  }
   return def;
 }
-function saveIcons(icons){ saveJ(STORE.icons, icons); }
+function saveIcons(icons){ return saveJ(STORE.icons, icons); }
 function getBadges(){
   var b = loadJ(STORE.badges, {});
   return b;
@@ -720,7 +733,7 @@ var momoNote = load(STORE.note, '默默');
 var wxWall = load(STORE.wxWall, '');
 var WX_EMOJI = loadJ(STORE.emoji, ['😊','😘','🥰','😤','🤔','😂','👍','❤️','🌙','✨','🍬','💢']);
 function saveEmoji(){ saveJ(STORE.emoji, WX_EMOJI); }
-function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;'); }
 function fmtHM(t){ var d=new Date(t); return pad(d.getHours())+':'+pad(d.getMinutes()); }
 function fmtDay(t){ var d=new Date(t); return (d.getMonth()+1)+'月'+d.getDate()+'日'; }
 
@@ -1307,9 +1320,23 @@ function renderMem(){
 /* =====================================================
    模块六：设置（主题/壁纸/头像/API Key/图标自定义）
    ===================================================== */
-function readImg(file, cb){
+function readImg(file, cb, maxW){
   var fr=new FileReader();
-  fr.onload=function(){ cb(fr.result); };
+  fr.onload=function(){
+    var src=fr.result;
+    if(!maxW){ cb(src); return; }
+    var im=new Image();
+    im.onload=function(){
+      var w=im.width, h=im.height, m=Math.max(w,h);
+      if(m<=maxW){ cb(src); return; }
+      var r=maxW/m, nw=Math.max(1,Math.round(w*r)), nh=Math.max(1,Math.round(h*r));
+      var cv=document.createElement('canvas'); cv.width=nw; cv.height=nh;
+      cv.getContext('2d').drawImage(im,0,0,nw,nh);
+      try{ cb(cv.toDataURL('image/jpeg',0.82)); }catch(e){ cb(src); }
+    };
+    im.onerror=function(){ cb(src); };
+    im.src=src;
+  };
   fr.readAsDataURL(file);
 }
 appRenderers.settings = function(body){
@@ -1365,9 +1392,9 @@ appRenderers.settings = function(body){
       var f=inp.files[0]; if(!f) return;
       readImg(f, function(d){
         var ic2=getIcons(); ic2[inp.getAttribute('data-img')].img=d;
-        saveIcons(ic2); renderHome();
-        appRenderers.settings(body);
-      });
+        if(!saveIcons(ic2)){ showNotify('⚠️','图标','存储空间不足，没存进去。建议先恢复默认壁纸腾空间', null); return; }
+        renderHome(); appRenderers.settings(body);
+      }, 256);
     };
   });
   iconList.querySelectorAll('[data-reset]').forEach(function(b){
