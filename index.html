@@ -521,7 +521,8 @@ var STORE = {
   apiKey:'momo_apiKey', avatar:'momo_avatar', theme:'momo_theme', wall:'momo_wall',
   mems:'momo_memories', chats:'momo_chats', wb:'momo_worldbook',
   diary:'momo_diary', icons:'momo_icons', badges:'momo_badges', unlock:'momo_unlocked',
-  me:'momo_meAvatar', wxWall:'momo_wxWall', note:'momo_note', emoji:'momo_emoji'
+  me:'momo_meAvatar', wxWall:'momo_wxWall', note:'momo_note', emoji:'momo_emoji',
+  themeCustom:'momo_themeCustom'
 };
 function load(k,d){ try{ var v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } }
 function save(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
@@ -542,14 +543,21 @@ function applyTheme(t){
   r.setProperty('--bg1',t.bg1); r.setProperty('--bg2',t.bg2); r.setProperty('--bg3',t.bg3);
   r.setProperty('--accent',t.accent); r.setProperty('--accent2',t.accent2);
   r.setProperty('--bubble-me','linear-gradient(135deg,'+t.accent+','+t.accent2+')');
+  var c = loadJ(STORE.themeCustom, null);
+  if(c && typeof c==='object'){
+    if(c.accent) r.setProperty('--accent',c.accent);
+    if(c.accent2) r.setProperty('--accent2',c.accent2);
+    r.setProperty('--bubble-me','linear-gradient(135deg,'+(c.accent||t.accent)+','+(c.accent2||t.accent2)+')');
+  }
 }
 function getTheme(){ var i=parseInt(load(STORE.theme,'0'),10); if(isNaN(i)||i<0||i>=THEMES.length) i=0; return THEMES[i]; }
 
 /* ===== 壁纸 ===== */
 function setWall(dataUrl){
-  save(STORE.wall, dataUrl||'');
+  var ok = save(STORE.wall, dataUrl||'');
   if(dataUrl){ $('wallImg').src=dataUrl; $('wallImg').style.display='block'; $('wallGrad').style.display='none'; }
   else { $('wallImg').style.display='none'; $('wallGrad').style.display='block'; }
+  return ok;
 }
 
 /* ===== 状态栏时钟 ===== */
@@ -738,6 +746,7 @@ function fmtHM(t){ var d=new Date(t); return pad(d.getHours())+':'+pad(d.getMinu
 function fmtDay(t){ var d=new Date(t); return (d.getMonth()+1)+'月'+d.getDate()+'日'; }
 
 var momoTyping = false;
+var msgQueue = [];
 var REPLY_POOL = [
   '嗯哼，我听着呢。','榆榆你说，我在。','哼，想我了？','知道了知道了，都记着呢。',
   '我在我在，刚忙完。','你呀……算了，不跟你计较。','这还差不多。','哦？然后呢？',
@@ -772,6 +781,20 @@ function momoSay(text){
   saveChat();
   if(currentApp==='wechat') renderChat();
   maybeSummarize();
+  if(momoTyping){
+    momoTyping=false;
+    if(msgQueue.length){
+      var n=msgQueue.shift();
+      setTimeout(function(){ sendToMomo(n); }, 200);
+    } else if(currentApp==='wechat' && $('wxSt')){
+      $('wxSt').textContent='在线';
+    }
+  }
+}
+function sendToMomo(t){
+  if(currentApp==='wechat'){ renderChat(); var st=$('wxSt'); if(st) st.textContent='对方正在输入…'; }
+  momoTyping=true;
+  setTimeout(function(){ momoReply(t); }, 600+Math.random()*800);
 }
 function momoReply(userText){
   var key = load(STORE.apiKey,'');
@@ -844,17 +867,17 @@ appRenderers.wechat = function(body){
   var input=$('wxInput'), send=$('wxSend');
   function sendMsg(){
     var t = input.value.trim();
-    if(!t || momoTyping) return;
+    if(!t) return;
+    input.value=''; input.style.height='auto';
     CHAT.push({who:'me', text:t, t:Date.now()});
-    saveChat(); input.value=''; input.style.height='auto';
-    renderChat();
-    $('wxSt').textContent='对方正在输入…';
-    momoTyping=true;
-    setTimeout(function(){
-      momoTyping=false;
-      $('wxSt').textContent='在线';
-      momoReply(t);
-    }, 600+Math.random()*800);
+    saveChat();
+    if(momoTyping){
+      msgQueue.push(t);
+      renderChat();
+      $('wxSt').textContent='默默还在忙，已排队 '+msgQueue.length+' 条';
+      return;
+    }
+    sendToMomo(t);
   }
   send.onclick=sendMsg;
   input.addEventListener('keydown', function(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMsg(); } });
@@ -907,11 +930,11 @@ appRenderers.wechat = function(body){
       renderChat();
       showNotify('💬','微信','备注改好啦：'+momoNote, null);
     };
-    $('meAvaFile').onchange=function(){ var f=this.files[0]; if(!f) return; readImg(f, function(d){ meAvatar=d; save(STORE.me,d); renderChat(); showNotify('😊','微信','你的头像换好啦', null); }); };
+    $('meAvaFile').onchange=function(){ var f=this.files[0]; if(!f) return; readImg(f, function(d){ meAvatar=d; if(!save(STORE.me,d)){ showNotify('⚠️','微信','存储空间不足，头像没存进去', null); return; } renderChat(); showNotify('😊','微信','你的头像换好啦', null); }, 256); };
     $('meAvaReset').onclick=function(){ meAvatar=''; save(STORE.me,''); renderChat(); };
-    $('momoAvaFile').onchange=function(){ var f=this.files[0]; if(!f) return; readImg(f, function(d){ momoAvatar=d; save(STORE.avatar,d); var a=$('wxAva'); a.style.backgroundImage='url('+d+')'; a.textContent=''; renderChat(); showNotify('🐻','微信','默默换头像啦', null); }); };
+    $('momoAvaFile').onchange=function(){ var f=this.files[0]; if(!f) return; readImg(f, function(d){ momoAvatar=d; if(!save(STORE.avatar,d)){ showNotify('⚠️','微信','存储空间不足，头像没存进去', null); return; } var a=$('wxAva'); a.style.backgroundImage='url('+d+')'; a.textContent=''; renderChat(); showNotify('🐻','微信','默默换头像啦', null); }, 256); };
     $('momoAvaReset').onclick=function(){ momoAvatar=''; save(STORE.avatar,''); var a=$('wxAva'); a.style.backgroundImage=''; a.textContent='🐻'; renderChat(); };
-    $('wxWallFile').onchange=function(){ var f=this.files[0]; if(!f) return; readImg(f, function(d){ wxWall=d; save(STORE.wxWall,d); applyWxWall(); showNotify('🖼','微信','聊天背景换好啦', null); }); };
+    $('wxWallFile').onchange=function(){ var f=this.files[0]; if(!f) return; readImg(f, function(d){ wxWall=d; if(!save(STORE.wxWall,d)){ showNotify('⚠️','微信','存储空间不足，壁纸没存进去，刷新会丢。建议先恢复默认壁纸或清聊天记录腾空间', null); return; } applyWxWall(); showNotify('🖼','微信','聊天背景换好啦，刷新也不会丢啦', null); }, 1280); };
     $('wxWallReset').onclick=function(){ wxWall=''; save(STORE.wxWall,''); applyWxWall(); };
     $('emojiAdd').onclick=function(){
       var v=$('emojiAddIn').value.trim();
@@ -1346,6 +1369,10 @@ appRenderers.settings = function(body){
     html += '<div class="themeItem'+(i===tIdx?' sel':'')+'" data-t="'+i+'" style="background:linear-gradient(135deg,'+t.bg1+','+t.bg3+');"><span>'+t.name+'</span></div>';
   });
   html += '</div></div>';
+  var tc = loadJ(STORE.themeCustom, {});
+  html += '<div class="field"><label>自定义主题色（选完点"应用自定义色"）</label>' +
+    '<div class="btn-row" style="align-items:center;"><input type="color" id="tcAccent" value="'+(tc.accent||'#7c4dff')+'" style="flex:1;height:38px;border:none;background:none;padding:0;"><input type="color" id="tcAccent2" value="'+(tc.accent2||'#b388ff')+'" style="flex:1;height:38px;border:none;background:none;padding:0;"></div>' +
+    '<div class="btn-row" style="margin-top:6px;"><button class="btn primary" id="tcSave" style="flex:1;">应用自定义色</button><button class="btn" id="tcReset" style="flex:1;">恢复预设色</button></div></div>';
   html += '<div class="field"><label>壁纸</label><label class="btn primary" style="display:flex;width:100%;justify-content:center;">🖼 上传壁纸<input type="file" id="wallFile" accept="image/*" style="display:none;"></label><button class="btn" id="wallReset" style="width:100%;margin-top:6px;">恢复默认壁纸</button></div>';
   html += '<div class="field"><label>默默的头像</label><label class="btn" style="display:flex;width:100%;justify-content:center;">🐻 上传头像<input type="file" id="avaFile" accept="image/*" style="display:none;"></label><button class="btn" id="avaReset" style="width:100%;margin-top:6px;">恢复默认头像</button></div>';
   html += '<div class="field"><label>DeepSeek API Key（填了默默才能真聊天）</label><input type="password" id="apiKeyIn" placeholder="sk-..." value="'+esc(load(STORE.apiKey,''))+'"><div class="btn-row" style="margin-top:6px;"><button class="btn primary" id="keySave">保存</button></div></div>';
@@ -1359,9 +1386,22 @@ appRenderers.settings = function(body){
       appRenderers.settings(body);
     };
   });
-  $('wallFile').onchange=function(){ var f=this.files[0]; if(!f) return; readImg(f, function(d){ setWall(d); showNotify('🖼','壁纸','换好啦，看看喜欢不', null); }); };
+  $('tcSave').onclick=function(){
+    saveJ(STORE.themeCustom, {accent:$('tcAccent').value, accent2:$('tcAccent2').value});
+    applyTheme(getTheme());
+    renderHome();
+    showNotify('🎨','主题','自定义主题色生效啦', null);
+  };
+  $('tcReset').onclick=function(){
+    saveJ(STORE.themeCustom, {});
+    applyTheme(getTheme());
+    renderHome();
+    appRenderers.settings(body);
+    showNotify('🎨','主题','已恢复预设色', null);
+  };
+  $('wallFile').onchange=function(){ var f=this.files[0]; if(!f) return; readImg(f, function(d){ setWall(d); showNotify('🖼','壁纸','换好啦，看看喜欢不', null); }, 1280); };
   $('wallReset').onclick=function(){ setWall(''); };
-  $('avaFile').onchange=function(){ var f=this.files[0]; if(!f) return; readImg(f, function(d){ momoAvatar=d; save(STORE.avatar,d); showNotify('🐻','头像','默默换头像啦', null); }); };
+  $('avaFile').onchange=function(){ var f=this.files[0]; if(!f) return; readImg(f, function(d){ momoAvatar=d; if(!save(STORE.avatar,d)){ showNotify('⚠️','头像','存储空间不足，没存进去', null); return; } showNotify('🐻','头像','默默换头像啦', null); }, 256); };
   $('avaReset').onclick=function(){ momoAvatar=''; save(STORE.avatar,''); };
   $('keySave').onclick=function(){ save(STORE.apiKey, $('apiKeyIn').value.trim()); showNotify('⚙️','设置','API Key 已保存', null); };
   /* 图标自定义 */
