@@ -537,17 +537,28 @@ var THEMES = [
   {name:'极光绿', bg1:'#0a2e24', bg2:'#0f4a3a', bg3:'#051710', accent:'#2fd6a8', accent2:'#7dffd4'},
   {name:'暖阳橙', bg1:'#3a1c0a', bg2:'#6b3310', bg3:'#1e0e05', accent:'#ff9d45', accent2:'#ffc37d'}
 ];
+function shade(hex,f){
+  hex = (hex||'#7c4dff').replace('#','');
+  if(hex.length===3) hex=hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+  var r=parseInt(hex.substr(0,2),16), g=parseInt(hex.substr(2,2),16), b=parseInt(hex.substr(4,2),16);
+  r=Math.min(255,Math.round(r*f)); g=Math.min(255,Math.round(g*f)); b=Math.min(255,Math.round(b*f));
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
 function applyTheme(t){
   if(!t) t = THEMES[0];
   var r = document.documentElement.style;
-  r.setProperty('--bg1',t.bg1); r.setProperty('--bg2',t.bg2); r.setProperty('--bg3',t.bg3);
-  r.setProperty('--accent',t.accent); r.setProperty('--accent2',t.accent2);
-  r.setProperty('--bubble-me','linear-gradient(135deg,'+t.accent+','+t.accent2+')');
   var c = loadJ(STORE.themeCustom, null);
-  if(c && typeof c==='object'){
-    if(c.accent) r.setProperty('--accent',c.accent);
-    if(c.accent2) r.setProperty('--accent2',c.accent2);
-    r.setProperty('--bubble-me','linear-gradient(135deg,'+(c.accent||t.accent)+','+(c.accent2||t.accent2)+')');
+  if(c && typeof c==='object' && (c.accent||c.accent2)){
+    var a = c.accent||t.accent, b = c.accent2||t.accent2;
+    r.setProperty('--bg1', shade(a,.18));
+    r.setProperty('--bg2', shade(a,.40));
+    r.setProperty('--bg3', shade(a,.09));
+    r.setProperty('--accent',a); r.setProperty('--accent2',b);
+    r.setProperty('--bubble-me','linear-gradient(135deg,'+a+','+b+')');
+  } else {
+    r.setProperty('--bg1',t.bg1); r.setProperty('--bg2',t.bg2); r.setProperty('--bg3',t.bg3);
+    r.setProperty('--accent',t.accent); r.setProperty('--accent2',t.accent2);
+    r.setProperty('--bubble-me','linear-gradient(135deg,'+t.accent+','+t.accent2+')');
   }
 }
 function getTheme(){ var i=parseInt(load(STORE.theme,'0'),10); if(isNaN(i)||i<0||i>=THEMES.length) i=0; return THEMES[i]; }
